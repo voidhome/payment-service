@@ -1,47 +1,37 @@
 package paymentservice.config
 
-import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.kafka.config.TopicBuilder
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
-import org.springframework.kafka.support.serializer.JsonDeserializer
-import org.springframework.kafka.support.serializer.JsonSerializer
-import paymentservice.dto.PaymentDto
-
 
 @Configuration
-class KafkaProducerConfig {
+class KafkaProducerConfig(
+    private val configProperties: KafkaConfigProperties,
+) {
 
     @Bean
-    fun producerConfig(): MutableMap<String, Any> {
-        val props: MutableMap<String, Any> = HashMap()
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer::class.java)
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer::class.java)
-        return props
+    fun producerFactory(): ProducerFactory<String, ByteArray> {
+        return DefaultKafkaProducerFactory(producerProps())
     }
 
     @Bean
-    fun producerFactory(): ProducerFactory<String, PaymentDto> {
-        return DefaultKafkaProducerFactory(producerConfig())
-    }
-
-    @Bean
-    fun kafkaTemplate(): KafkaTemplate<String, PaymentDto> {
+    fun kafkaTemplate(): KafkaTemplate<String, ByteArray> {
         return KafkaTemplate(producerFactory())
     }
 
-    @Bean
-    fun createTopic(): NewTopic {
-        return TopicBuilder
-            .name("payment-created-events-topic")
-            .partitions(3)
-            .replicas(1)
-            .build()
-    }
+    private fun producerProps(): Map<String, Any> = hashMapOf(
+        ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to configProperties.bootstrapServers,
+        ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
+        ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to ByteArraySerializer::class.java,
+        ProducerConfig.ACKS_CONFIG to configProperties.acksConfig,
+        ProducerConfig.RETRIES_CONFIG to configProperties.retriesConfig,
+        ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG to configProperties.deliveryTimeoutMsConfig,
+        ProducerConfig.MAX_REQUEST_SIZE_CONFIG to configProperties.maxRequestSizeConfig,
+        ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG to configProperties.requestTimeoutMsConfig,
+    )
 }

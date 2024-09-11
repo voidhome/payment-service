@@ -2,8 +2,53 @@ spring:
   application:
     name: payment-service
 
+  liquibase:
+    url: jdbc:postgresql://localhost:5432/postgres
+    user: postgres
+    password: postgres
+    change-log: db/changelog/changelog-master.yml
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: postgres
+
   kafka:
     bootstrap-servers: localhost:9092
+    consumer:
+      group-id: payment-microservice-group-id
+      enable-auto-commit-config: true
+      trusted-packages: paymentprocessor.dto
+      value-default-type: paymentprocessor.dto.PaymentDto
+      type-mappings: paymentservice.dto.PaymentDto:paymentprocessor.dto.PaymentDto
+      auto-offset-reset-config: latest
+      max-poll-records-config: 5
     producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks-config: -1
+      retries-config: 10
+      delivery-timeout-ms-config: 120000
+      max-request-size-config: 10685765
+      request-timeout-ms-config: 30000
+
+logging:
+  level:
+    root: info
+
+scheduler:
+  outbox:
+    enable: true
+    cron: "0 */2 * * * *"
+
+topics:
+  payment-created:
+    name: payment-created
+    partitions: 3
+    replication: 1
+  payment-processed:
+    name: payment-processed
+    partitions: 3
+    replication: 1
+  retry-topic:
+    name: retry-topic
+    partitions: 3
+    replication: 1
